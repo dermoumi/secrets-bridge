@@ -32,41 +32,41 @@ This invocation will use the bridge config at ~/.bridge-conf by default:
 		if len(args) == 0 {
 			log.Fatalln("no command to execute specified, see examples with --help")
 		}
+		
+		env := os.Environ()
 
 		c, err := newClient(bridgeConf)
 		if err != nil {
-			log.Fatalln(err)
-		}
+			log.Println(err)
+		} else {
+			log.Println("secrets-bridge: server connection successful")
 
-		log.Println("secrets-bridge: server connection successful")
+			if !disableSSHAgentForwarding {
+				go func() {
+					log.Println("secrets-bridge: Setting up SSH-Agent forwarder...")
+					err := agentfwd.ListenAndServeSSHAgentForwarder(c.SSHAgentWebsocketURL(), "https://localhost", c.ClientTLSConfig())
+					if err != nil {
+						log.Fatalln("couldn't setup SSH-Agent forwarder:", err)
+					}
+				}()
+				os.Setenv("SSH_AUTH_SOCK", agentfwd.UnixSocket)
+				time.Sleep(25 * time.Millisecond)
+			}
 
-		if !disableSSHAgentForwarding {
-			go func() {
-				log.Println("secrets-bridge: Setting up SSH-Agent forwarder...")
-				err := agentfwd.ListenAndServeSSHAgentForwarder(c.SSHAgentWebsocketURL(), "https://localhost", c.ClientTLSConfig())
-				if err != nil {
-					log.Fatalln("couldn't setup SSH-Agent forwarder:", err)
+			for _, envVarKey := range envVars {
+				varParts := strings.Split(envVarKey, "=")
+				if len(varParts) != 2 {
+					log.Fatalf("'-e' env var %q spec malformed\n", varParts[0])
 				}
-			}()
-			os.Setenv("SSH_AUTH_SOCK", agentfwd.UnixSocket)
-			time.Sleep(25 * time.Millisecond)
-		}
 
-		env := os.Environ()
+				// Fetch the `key`..
+				secret, err := c.GetSecretString(varParts[1])
+				if err != nil {
+					log.Fatalln("failed fetching secret:", err)
+				}
 
-		for _, envVarKey := range envVars {
-			varParts := strings.Split(envVarKey, "=")
-			if len(varParts) != 2 {
-				log.Fatalf("'-e' env var %q spec malformed\n", varParts[0])
+				env = append(env, fmt.Sprintf("%s=%s", varParts[0], secret))
 			}
-
-			// Fetch the `key`..
-			secret, err := c.GetSecretString(varParts[1])
-			if err != nil {
-				log.Fatalln("failed fetching secret:", err)
-			}
-
-			env = append(env, fmt.Sprintf("%s=%s", varParts[0], secret))
 		}
 
 		program := args[0]
