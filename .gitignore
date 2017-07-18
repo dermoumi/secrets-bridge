@@ -1,3 +1,4 @@
 *~
 *.test
 bridge-conf
+secrets-bridge-*
