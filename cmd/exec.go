@@ -82,7 +82,11 @@ This invocation will use the bridge config at ~/.bridge-conf by default:
 
 		log.Printf("secrets-bridge: Calling subprocess with: %q\n", args)
 		subErr := subprocess.Run()
-		log.Printf("secrets-bridge: Call returned, exited with: %s\n", subErr)
+		if subErr == nil {
+			log.Printf("secrets-bridge: Call returned, exited no error")
+		} else {
+			log.Printf("secrets-bridge: Call returned, exited with: %s\n", subErr)
+		}
 
 		if !disableSSHAgentForwarding {
 			os.Remove(agentfwd.UnixSocket)
