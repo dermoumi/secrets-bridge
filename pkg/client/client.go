@@ -145,7 +145,10 @@ func (c *Client) doRequest(method string, path string) ([]byte, error) {
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode == 404 {
+		log.Printf("WARNING: '%s' is not defined\n", path)
+		cnt = []byte{}
+	} else if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, string(cnt))
 	}
 

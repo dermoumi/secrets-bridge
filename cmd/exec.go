@@ -65,7 +65,9 @@ This invocation will use the bridge config at ~/.bridge-conf by default:
 					log.Fatalln("failed fetching secret:", err)
 				}
 
-				env = append(env, fmt.Sprintf("%s=%s", varParts[0], secret))
+				if secret != "" {
+					env = append(env, fmt.Sprintf("%s=%s", varParts[0], secret))
+				}
 			}
 		}
 
